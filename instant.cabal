@@ -13,9 +13,16 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
-executable instant
+library
   hs-source-dirs:      src
-  main-is:             Main.hs
+  exposed-modules:     AbsInstant
+                       ErrM
+  build-depends:       base >= 4.7 && < 5
+  default-language:    Haskell2010
+
+executable instant-exe
+  hs-source-dirs:      src
+  main-is:             SkelInstant.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
-                     , parsec
+                     , instant
