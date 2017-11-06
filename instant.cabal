@@ -21,13 +21,29 @@ library
                        ParInstant
                        SkelInstant
                        PrintInstant
+                       Flatten
   build-depends:       base >= 4.7 && < 5
-                    ,  array
+                     , array
+                     , containers
   default-language:    Haskell2010
 
-executable instant-exe
+executable test-instant
   hs-source-dirs:      app
   main-is:             TestInstant.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , instant
+
+executable interpret
+  hs-source-dirs:      app
+  main-is:             Interpret.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                      , instant
+
+executable generate-llvm
+  hs-source-dirs:      app
+  main-is:             GenLLVM.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , instant

@@ -27,4 +27,3 @@ transExp x = case x of
   ExpDiv exp1 exp2 -> failure x
   ExpLit integer -> failure x
   ExpVar ident -> failure x
-
