@@ -1,7 +1,9 @@
 module Stackify where
 
 import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), CIdent (CIdent))
+import CompilerErr (CompilerErrorM, raiseCEUndefinedVariable)
 import qualified Data.Map as M
+import Control.Monad (foldM)
 
 newtype Local = LNum Integer deriving Show
 
@@ -21,41 +23,54 @@ lookupLocalForWrite ident locals@Locals {localsNextLocal = LNum nextLocalNum, lo
     else (LNum nextLocalNum, Locals { localsNextLocal = LNum (nextLocalNum + 1)
                                     , localsIdentMap = M.insert ident (LNum nextLocalNum) identMap })
 
-lookupLocalForRead :: String -> Locals -> Local
-lookupLocalForRead ident Locals {localsNextLocal = nextLocal, localsIdentMap = identMap}
- = identMap M.! ident
+lookupLocalForRead :: Int -> Int -> String -> Locals -> CompilerErrorM Local
+lookupLocalForRead row col ident Locals {localsNextLocal = nextLocal, localsIdentMap = identMap}
+ = maybe (raiseCEUndefinedVariable ident row col) return (M.lookup ident identMap)
 
 initLocals :: Locals
 initLocals = Locals {localsNextLocal = LNum 0, localsIdentMap = M.empty}
 
-treeToJVMProg :: Program -> JVMProgram
-treeToJVMProg (Prog stmts) = JVMProgram { jvmProgStmts = fst $ foldl go ([], initLocals) stmts
-                                        , jvmProgStackLimit = 20
-                                        , jvmProgLocalsLimit = 20 }
-  where go (stmts0, locals0) item = let (newStmts, locals1) = stmtToLLVMStmt item locals0 in (stmts0 ++ newStmts, locals1)
+treeToJVMProg :: Program -> CompilerErrorM JVMProgram
+treeToJVMProg (Prog stmts) = do
+  let go (stmts0, locals0) item =
+        do
+          (newStmts, locals1) <- stmtToLLVMStmt item locals0
+          return (stmts0 ++ newStmts, locals1)
+  (jvmStmts, _) <- foldM go ([], initLocals) stmts
+  return JVMProgram { jvmProgStmts = jvmStmts
+                    , jvmProgStackLimit = 20
+                    , jvmProgLocalsLimit = 20 }
 
-stmtToLLVMStmt :: Stmt -> Locals -> ([JVMStmt], Locals)
-stmtToLLVMStmt (SExp expr) locals = (stmts ++ [Print], locals)
-  where stmts = expToLLVM expr locals
-stmtToLLVMStmt (SAss (CIdent (_, ident)) expr) locals0 = (stmts ++ [Store local], locals1)
-  where stmts = expToLLVM expr locals0
-        (local, locals1) = lookupLocalForWrite ident locals0
+stmtToLLVMStmt :: Stmt -> Locals -> CompilerErrorM ([JVMStmt], Locals)
+stmtToLLVMStmt (SExp expr) locals =
+  do
+    stmts <- expToLLVM expr locals
+    return (stmts ++ [Print], locals)
+
+stmtToLLVMStmt (SAss (CIdent (_, ident)) expr) locals0 =
+  do
+    stmts <- expToLLVM expr locals0
+    let (local, locals1) = lookupLocalForWrite ident locals0
+    return (stmts ++ [Store local], locals1)
 
 -- TODO: remove VariableMap as return value
-expToLLVM :: Exp -> Locals -> [JVMStmt]
+expToLLVM :: Exp -> Locals -> CompilerErrorM [JVMStmt]
 expToLLVM (ExpAdd e1 e2) locals = arithmHelper OAdd e1 e2 locals
 expToLLVM (ExpMul e1 e2) locals = arithmHelper OMul e1 e2 locals
 expToLLVM (ExpSub e1 e2) locals = arithmHelper OSub e1 e2 locals
 expToLLVM (ExpDiv e1 e2) locals = arithmHelper ODiv e1 e2 locals
-expToLLVM (ExpLit num) _ = [Const num]
-expToLLVM (ExpVar (CIdent (_, ident))) locals = [Load local]
-  where local = lookupLocalForRead ident locals
+expToLLVM (ExpLit num) _ = return [Const num]
+expToLLVM (ExpVar (CIdent ((row, col), ident))) locals =
+  do
+    local <- lookupLocalForRead row col ident locals
+    return [Load local]
 
-arithmHelper :: Operator -> Exp -> Exp -> Locals -> [JVMStmt]
+arithmHelper :: Operator -> Exp -> Exp -> Locals -> CompilerErrorM [JVMStmt]
 arithmHelper operator e1 e2 locals =
-      s1 ++ s2 ++ [Arithm operator]
-  where s1 = expToLLVM e1 locals
-        s2 = expToLLVM e2 locals
+  do
+    s1 <- expToLLVM e1 locals
+    s2 <- expToLLVM e2 locals
+    return $ s1 ++ s2 ++ [Arithm operator]
 
 stringify :: JVMProgram -> String
 stringify JVMProgram { jvmProgStmts = stmts
@@ -96,5 +111,5 @@ stringify JVMProgram { jvmProgStmts = stmts
     stringifyOp ODiv = "idiv"
 
 compileJVM tree = do
-  let prog = treeToJVMProg tree
+  prog <- treeToJVMProg tree
   return $ stringify prog
