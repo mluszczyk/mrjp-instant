@@ -21,7 +21,7 @@ newtype RegisterState = RSState Integer deriving Show
 newtype VariableMap = VMMap (M.Map String Value)
 -- Program is a list of statements.
 newtype LLVMProgram = LLVMProgram [LLVMStmt] deriving Show
--- TODO: remove VConst?
+-- Value is either a constant or a register.
 data Value = VConst Integer | VRegister Register deriving Show
 data Operator = OAdd | OSub | OMul | ODiv deriving Show
 -- Statement can either print a value or perform arithmetic operation
@@ -60,7 +60,6 @@ stmtToLLVMStmt (SExp expr) rs0 vm = do
   (value, stmts, rs1) <- expToLLVM expr rs0 vm
   return (stmts ++ [Print value], rs1, vm)
 
--- TODO: write to register?
 stmtToLLVMStmt (SAss (CIdent ((_, _), ident)) expr) rs0 vm = do
   (value, stmts, rs1) <- expToLLVM expr rs0 vm
   return (stmts, rs1, setVariable ident value vm)
