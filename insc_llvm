@@ -1,0 +1,9 @@
+#!/bin/bash
+INFILE="$1"
+DIR=`dirname $INFILE`
+BASENAME=`basename $INFILE .ins`
+LLFILE="$DIR/${BASENAME}.ll"
+BCFILE="$DIR/${BASENAME}.bc"
+
+stack exec compile llvm "$INFILE" > $LLFILE
+clang -emit-llvm -o "$BCFILE" -c "$LLFILE"

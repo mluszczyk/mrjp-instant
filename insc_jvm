@@ -1,0 +1,9 @@
+#!/bin/bash
+INFILE="$1"
+DIR=`dirname $INFILE`
+BASENAME=`basename $INFILE .ins`
+JFILE="$DIR/${BASENAME}.j"
+
+stack exec compile jvm "$INFILE" > $JFILE
+sed -i "" "s/Instant/$BASENAME/1" "$JFILE"
+jasmin -d "$DIR" "$JFILE"
