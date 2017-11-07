@@ -1,0 +1,28 @@
+# Instant compiler
+
+This is my solution to the first assignment on the compilers course (MRJP) at
+University of Warsaw.
+
+Presented is a compiler of a toy language called Instant to LLVM and JVM
+bytecodes.
+
+## Compilation
+
+stack build
+
+Makefile is configured to do this, too.
+
+## Running
+
+stack exec compile llvm <file.ins> > out.ll
+stack exec compile jvm <file.ins> > out.j
+
+Convenience scripts ./insc_llvm and ./insc_jvm defined as in the task objective.
+
+## Dependencies
+
+The project heavily relies on stack (packaging tool for Haskell). The additional
+bash scripts ./insc_llvm and ./insc_jvm use jasmin, clang and sed.
+
+The parsing code is generated using BNFC, but it is not necessary for
+compilation or for running.
