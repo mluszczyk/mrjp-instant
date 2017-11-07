@@ -109,18 +109,21 @@ stringify JVMProgram { jvmProgStmts = stmts
       , ".limit stack " ++ show stackLimit
       , ".limit locals " ++ show localsLimit
       ]
-    progMain = map stringifyStmt stmts
+    progMain = map (ident . stringifyStmt) stmts
     progTail =
       [ "  return"
       , ".end method"
       ]
-    stringifyStmt Print = "  invokevirtual  java/io/PrintStream/println(I)V"
-    stringifyStmt (Const num) = "  " ++ stringifyConst num
-    stringifyStmt (Load (LNum localNum)) = "  iload " ++ show localNum
-    stringifyStmt (Store (LNum localNum)) = "  istore " ++ show localNum
-    stringifyStmt (Arithm operator) = "  " ++ stringifyOp operator
-    stringifyStmt GetStaticPrint = "  getstatic  java/lang/System/out Ljava/io/PrintStream;"
-    stringifyStmt Swap = "  swap"
+
+    ident = ("  " ++)
+
+    stringifyStmt Print = "invokevirtual  java/io/PrintStream/println(I)V"
+    stringifyStmt (Const num) = stringifyConst num
+    stringifyStmt (Load (LNum localNum)) = "iload " ++ show localNum
+    stringifyStmt (Store (LNum localNum)) = "istore " ++ show localNum
+    stringifyStmt (Arithm operator) = stringifyOp operator
+    stringifyStmt GetStaticPrint = "getstatic  java/lang/System/out Ljava/io/PrintStream;"
+    stringifyStmt Swap = "swap"
 
     stringifyOp OAdd = "iadd"
     stringifyOp OMul = "imul"
