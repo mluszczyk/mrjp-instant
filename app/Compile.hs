@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall -Werror #-}
 
+{- Command line interface to the compiler. Based on the BNFC parser. -}
 module Main where
 
 import System.IO ( hPutStrLn, stderr, hPrint )
@@ -9,12 +10,11 @@ import System.Exit ( exitFailure, exitSuccess )
 import LexInstant
 import ParInstant
 import AbsInstant
+import ErrM
 
 import Flatten (compileLLVM)
 import Stackify (compileJVM)
 import CompilerErr (errorToString, CompilerErrorM)
-
-import ErrM
 
 type ParseFun a = [Token] -> Err a
 

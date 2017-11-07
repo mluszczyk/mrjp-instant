@@ -1,12 +1,19 @@
 {-# OPTIONS_GHC -Wall -Werror #-}
 
+{- Compile Instant AST to Jasmin code. -}
+
 module Stackify where
 
-import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), CIdent (CIdent))
-import CompilerErr (CompilerErrorM, raiseCEUndefinedVariable)
 import qualified Data.Map as M
-import Control.Monad (foldM)
+import Control.Monad ( foldM )
 
+import AbsInstant ( Program (Prog)
+                  , Stmt (SExp, SAss)
+                  , Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar)
+                  , CIdent (CIdent) )
+import CompilerErr ( CompilerErrorM, raiseCEUndefinedVariable )
+
+-- Representation of a local variable in JVM.
 newtype Local = LNum Int deriving Show
 
 data JVMProgram = JVMProgram { jvmProgStmts :: [JVMStmt]
@@ -14,8 +21,15 @@ data JVMProgram = JVMProgram { jvmProgStmts :: [JVMStmt]
                              , jvmProgLocalsLimit :: Int } deriving Show
 
 data Operator = OAdd | OSub | OMul | ODiv deriving Show
-data JVMStmt = Print | Const Integer | Load Local | Store Local | Arithm Operator | GetStaticPrint | Swap deriving Show
+data JVMStmt = Print
+             | Const Integer
+             | Load Local
+             | Store Local
+             | Arithm Operator
+             | GetStaticPrint
+             | Swap deriving Show
 
+-- Map from identifiers to locals and used locals counter.
 data Locals = Locals { localsNextLocal :: Local
                      , localsIdentMap :: M.Map String Local }
 
@@ -60,7 +74,6 @@ stmtToJVMStmt (SAss (CIdent (_, ident)) expr) locals0 =
     let (local, locals1) = lookupLocalForWrite ident locals0
     return (stmts ++ [Store local], locals1, depth)
 
--- TODO: remove VariableMap as return value
 expToJVM :: Exp -> Locals -> CompilerErrorM ([JVMStmt], Int)
 expToJVM (ExpAdd e1 e2) locals = arithmHelper OAdd e1 e2 locals
 expToJVM (ExpMul e1 e2) locals = arithmHelper OMul e1 e2 locals
