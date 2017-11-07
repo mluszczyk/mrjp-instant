@@ -12,7 +12,7 @@ import SkelInstant
 import PrintInstant
 import AbsInstant
 
-import Flatten (treeToLLVMProg)
+import Flatten (treeToLLVMProg, stringify)
 
 import ErrM
 
@@ -28,7 +28,7 @@ putStrV v s = if v > 1 then putStrLn s else return ()
 runFile :: Verbosity -> ParseFun Program -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
-showLLVMProg prog = putStrLn (show prog)
+showLLVMProg prog = putStrLn (stringify prog)
 
 run :: Verbosity -> ParseFun Program -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
