@@ -29,19 +29,19 @@ import ErrM
   ';' { PT _ (TS _ 7) }
   '=' { PT _ (TS _ 8) }
 
-L_ident  { PT _ (TV $$) }
 L_integ  { PT _ (TI $$) }
+L_CIdent { PT _ (T_CIdent _) }
 
 
 %%
 
-Ident   :: { Ident }   : L_ident  { Ident $1 }
 Integer :: { Integer } : L_integ  { (read ( $1)) :: Integer }
+CIdent    :: { CIdent} : L_CIdent { CIdent (mkPosToken $1)}
 
 Program :: { Program }
 Program : ListStmt { AbsInstant.Prog $1 }
 Stmt :: { Stmt }
-Stmt : Ident '=' Exp { AbsInstant.SAss $1 $3 }
+Stmt : CIdent '=' Exp { AbsInstant.SAss $1 $3 }
      | Exp { AbsInstant.SExp $1 }
 ListStmt :: { [Stmt] }
 ListStmt : {- empty -} { [] }
@@ -57,7 +57,7 @@ Exp3 : Exp3 '*' Exp4 { AbsInstant.ExpMul $1 $3 }
      | Exp4 { $1 }
 Exp4 :: { Exp }
 Exp4 : Integer { AbsInstant.ExpLit $1 }
-     | Ident { AbsInstant.ExpVar $1 }
+     | CIdent { AbsInstant.ExpVar $1 }
      | '(' Exp ')' { $2 }
 Exp :: { Exp }
 Exp : Exp1 { $1 }

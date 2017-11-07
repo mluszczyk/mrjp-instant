@@ -78,8 +78,9 @@ instance Print Double where
   prt _ x = doc (shows x)
 
 
-instance Print Ident where
-  prt _ (Ident i) = doc (showString ( i))
+
+instance Print CIdent where
+  prt _ (CIdent (_,i)) = doc (showString ( i))
 
 
 
@@ -89,7 +90,7 @@ instance Print Program where
 
 instance Print Stmt where
   prt i e = case e of
-    SAss id exp -> prPrec i 0 (concatD [prt 0 id, doc (showString "="), prt 0 exp])
+    SAss cident exp -> prPrec i 0 (concatD [prt 0 cident, doc (showString "="), prt 0 exp])
     SExp exp -> prPrec i 0 (concatD [prt 0 exp])
   prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
@@ -101,6 +102,6 @@ instance Print Exp where
     ExpMul exp1 exp2 -> prPrec i 3 (concatD [prt 3 exp1, doc (showString "*"), prt 4 exp2])
     ExpDiv exp1 exp2 -> prPrec i 3 (concatD [prt 3 exp1, doc (showString "/"), prt 4 exp2])
     ExpLit n -> prPrec i 4 (concatD [prt 0 n])
-    ExpVar id -> prPrec i 4 (concatD [prt 0 id])
+    ExpVar cident -> prPrec i 4 (concatD [prt 0 cident])
 
 

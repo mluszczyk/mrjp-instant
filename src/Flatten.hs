@@ -1,6 +1,6 @@
 module Flatten where
 
-import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), Ident (Ident))
+import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), CIdent (CIdent))
 import qualified Data.Map as M
 import CompilerErr (CompilerErrorM, raiseCEUndefinedVariable)
 import Control.Monad (foldM)
@@ -17,9 +17,9 @@ newtype LLVMProgram = LLVMProgram [LLVMStmt] deriving Show
 setVariable :: String -> Value -> VariableMap -> VariableMap
 setVariable string value (VMMap vm) = VMMap $ M.insert string value vm
 
-lookupVariable :: String -> VariableMap -> CompilerErrorM Value
-lookupVariable string (VMMap vm)
- = maybe (raiseCEUndefinedVariable string (-1) (-1) :: (CompilerErrorM a))
+lookupVariable :: (Int, Int) -> String -> VariableMap -> CompilerErrorM Value
+lookupVariable (row, col) string (VMMap vm)
+ = maybe (raiseCEUndefinedVariable string row col :: (CompilerErrorM a))
         (return :: (Value -> CompilerErrorM Value))
         (M.lookup string vm :: (Maybe Value))
 -- TODO: remove types above
@@ -46,7 +46,7 @@ stmtToLLVMStmt (SExp expr) rs0 vm0 = do
   return (stmts ++ [Print value], rs1, vm1)
 
 -- TODO: write to register?
-stmtToLLVMStmt (SAss (Ident ident) expr) rs0 vm0 = do
+stmtToLLVMStmt (SAss (CIdent ((_, _), ident)) expr) rs0 vm0 = do
   (value, stmts, rs1, vm1) <- expToLLVM expr rs0 vm0
   return (stmts, rs1, setVariable ident value vm1)
 
@@ -57,8 +57,8 @@ expToLLVM (ExpMul e1 e2) rs0 vm0 = arithmHelper OMul e1 e2 rs0 vm0
 expToLLVM (ExpSub e1 e2) rs0 vm0 = arithmHelper OSub e1 e2 rs0 vm0
 expToLLVM (ExpDiv e1 e2) rs0 vm0 = arithmHelper ODiv e1 e2 rs0 vm0
 expToLLVM (ExpLit num) registerState vm = return (VConst num, [], registerState, vm)
-expToLLVM (ExpVar (Ident ident)) registerState vm
-  = do var <- lookupVariable ident vm
+expToLLVM (ExpVar (CIdent (pos, ident))) registerState vm
+  = do var <- lookupVariable pos ident vm
        return (var, [], registerState, vm)
 
 arithmHelper operator e1 e2 rs0 vm0 = do

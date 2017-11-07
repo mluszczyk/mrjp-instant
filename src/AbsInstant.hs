@@ -7,11 +7,12 @@ module AbsInstant where
 
 
 
-newtype Ident = Ident String deriving (Eq, Ord, Show, Read)
+newtype CIdent = CIdent ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
 data Program = Prog [Stmt]
   deriving (Eq, Ord, Show, Read)
 
-data Stmt = SAss Ident Exp | SExp Exp
+data Stmt = SAss CIdent Exp | SExp Exp
   deriving (Eq, Ord, Show, Read)
 
 data Exp
@@ -20,6 +21,6 @@ data Exp
     | ExpMul Exp Exp
     | ExpDiv Exp Exp
     | ExpLit Integer
-    | ExpVar Ident
+    | ExpVar CIdent
   deriving (Eq, Ord, Show, Read)
 

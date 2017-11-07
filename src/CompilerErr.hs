@@ -1,12 +1,12 @@
 module CompilerErr where
 
 data CompilerError = CEUndefinedVariable { ceIdent :: String
-                                         , ceLine :: Integer
-                                         , ceColumn :: Integer }
+                                         , ceLine :: Int
+                                         , ceColumn :: Int }
 
 type CompilerErrorM a = Either CompilerError a
 
-raiseCEUndefinedVariable :: String -> Integer -> Integer -> CompilerErrorM a
+raiseCEUndefinedVariable :: String -> Int -> Int -> CompilerErrorM a
 raiseCEUndefinedVariable ident line column = Left CEUndefinedVariable { ceIdent = ident
                                                                       , ceLine = line
                                                                       , ceColumn = column }

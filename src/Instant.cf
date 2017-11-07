@@ -1,5 +1,5 @@
 Prog. Program ::= [Stmt] ;
-SAss. Stmt ::= Ident "=" Exp;
+SAss. Stmt ::= CIdent "=" Exp;
 SExp. Stmt ::= Exp ;
 separator Stmt ";" ;
 
@@ -8,5 +8,7 @@ ExpSub.            Exp2   ::= Exp2 "-"  Exp3 ;
 ExpMul.            Exp3   ::= Exp3 "*"  Exp4 ;
 ExpDiv.            Exp3   ::= Exp3 "/"  Exp4 ;
 ExpLit.            Exp4   ::= Integer ;
-ExpVar.            Exp4   ::= Ident ;
+ExpVar.            Exp4   ::= CIdent ;
 coercions Exp 4;
+
+position token CIdent (letter (letter | digit | '_')*) ;

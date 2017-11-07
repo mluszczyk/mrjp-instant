@@ -9,15 +9,15 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
-transIdent :: Ident -> Result
-transIdent x = case x of
-  Ident string -> failure x
+transCIdent :: CIdent -> Result
+transCIdent x = case x of
+  CIdent string -> failure x
 transProgram :: Program -> Result
 transProgram x = case x of
   Prog stmts -> failure x
 transStmt :: Stmt -> Result
 transStmt x = case x of
-  SAss ident exp -> failure x
+  SAss cident exp -> failure x
   SExp exp -> failure x
 transExp :: Exp -> Result
 transExp x = case x of
@@ -26,4 +26,5 @@ transExp x = case x of
   ExpMul exp1 exp2 -> failure x
   ExpDiv exp1 exp2 -> failure x
   ExpLit integer -> failure x
-  ExpVar ident -> failure x
+  ExpVar cident -> failure x
+

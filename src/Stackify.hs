@@ -1,6 +1,6 @@
 module Stackify where
 
-import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), Ident (Ident))
+import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), CIdent (CIdent))
 import qualified Data.Map as M
 
 newtype Local = LNum Integer deriving Show
@@ -37,7 +37,7 @@ treeToJVMProg (Prog stmts) = JVMProgram { jvmProgStmts = fst $ foldl go ([], ini
 stmtToLLVMStmt :: Stmt -> Locals -> ([JVMStmt], Locals)
 stmtToLLVMStmt (SExp expr) locals = (stmts ++ [Print], locals)
   where stmts = expToLLVM expr locals
-stmtToLLVMStmt (SAss (Ident ident) expr) locals0 = (stmts ++ [Store local], locals1)
+stmtToLLVMStmt (SAss (CIdent (_, ident)) expr) locals0 = (stmts ++ [Store local], locals1)
   where stmts = expToLLVM expr locals0
         (local, locals1) = lookupLocalForWrite ident locals0
 
@@ -48,7 +48,7 @@ expToLLVM (ExpMul e1 e2) locals = arithmHelper OMul e1 e2 locals
 expToLLVM (ExpSub e1 e2) locals = arithmHelper OSub e1 e2 locals
 expToLLVM (ExpDiv e1 e2) locals = arithmHelper ODiv e1 e2 locals
 expToLLVM (ExpLit num) _ = [Const num]
-expToLLVM (ExpVar (Ident ident)) locals = [Load local]
+expToLLVM (ExpVar (CIdent (_, ident))) locals = [Load local]
   where local = lookupLocalForRead ident locals
 
 arithmHelper :: Operator -> Exp -> Exp -> Locals -> [JVMStmt]
