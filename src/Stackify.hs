@@ -95,4 +95,6 @@ stringify JVMProgram { jvmProgStmts = stmts
     stringifyOp OSub = "isub"
     stringifyOp ODiv = "idiv"
 
-compileJVM = stringify . treeToJVMProg
+compileJVM tree = do
+  let prog = treeToJVMProg tree
+  return $ stringify prog

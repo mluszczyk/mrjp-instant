@@ -2,7 +2,7 @@
 module Main where
 
 
-import System.IO ( stdin, hGetContents, hPutStrLn, stderr, hPrint )
+import System.IO ( stdin, hGetContents, hPutStrLn, hPutStr, stderr, hPrint )
 import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
 
@@ -14,6 +14,7 @@ import AbsInstant
 
 import Flatten (compileLLVM)
 import Stackify (compileJVM)
+import CompilerErr (errorToString)
 
 import ErrM
 
@@ -32,9 +33,15 @@ run mode p s = let ts = myLLexer s in case p ts of
                          hPrint stderr ts
                          hPutStrLn stderr s
                          exitFailure
-          Ok  tree -> do let output = getCompiler mode tree
-                         putStr output
-                         exitSuccess
+          Ok  tree ->  either (\ce ->
+                           do
+                            hPutStrLn stderr (errorToString ce)
+                            exitFailure)
+                          (\ output ->
+                           do
+                            putStr output
+                            exitSuccess)
+                          (getCompiler mode tree)
 
 
 usage :: IO ()

@@ -2,6 +2,8 @@ module Flatten where
 
 import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), Ident (Ident))
 import qualified Data.Map as M
+import CompilerErr (CompilerErrorM, raiseCEUndefinedVariable)
+import Control.Monad (foldM)
 
 initRegister = RSState 0
 newRegister (RSState num) = (RRegister num, RSState $ num + 1)
@@ -15,8 +17,12 @@ newtype LLVMProgram = LLVMProgram [LLVMStmt] deriving Show
 setVariable :: String -> Value -> VariableMap -> VariableMap
 setVariable string value (VMMap vm) = VMMap $ M.insert string value vm
 
-lookupVariable :: String -> VariableMap -> Value
-lookupVariable string (VMMap vm) = vm M.! string
+lookupVariable :: String -> VariableMap -> CompilerErrorM Value
+lookupVariable string (VMMap vm)
+ = maybe (raiseCEUndefinedVariable string (-1) (-1) :: (CompilerErrorM a))
+        (return :: (Value -> CompilerErrorM Value))
+        (M.lookup string vm :: (Maybe Value))
+-- TODO: remove types above
 
 -- TODO: remove VConst?
 data Value = VConst Integer | VRegister Register deriving Show
@@ -25,33 +31,44 @@ data Operator = OAdd | OSub | OMul | ODiv deriving Show
 
 data LLVMStmt = LSArithm Value Value Operator Register | Print Value deriving Show
 
-treeToLLVMProg :: Program -> LLVMProgram
-treeToLLVMProg (Prog stmts) = LLVMProgram $ fstOfThree $ foldl go ([], initRegister, VMMap M.empty) stmts
-  where go (stmts0, rs0, rm0) item = let (newStmts, rs1, rm1) = stmtToLLVMStmt item rs0 rm0 in (stmts0 ++ newStmts, rs1, rm1)
-        fstOfThree (a, _, _) = a
+treeToLLVMProg :: Program -> CompilerErrorM LLVMProgram
+treeToLLVMProg (Prog stmts)
+  = do
+        let go (stmts0, rs0, rm0) item = do
+                (newStmts, rs1, rm1) <- stmtToLLVMStmt item rs0 rm0
+                return (stmts0 ++ newStmts, rs1, rm1)
+        (finalStmts, _, _ ) <- foldM go ([], initRegister, VMMap M.empty) stmts
+        return $ LLVMProgram finalStmts
 
-stmtToLLVMStmt :: Stmt -> RegisterState -> VariableMap -> ([LLVMStmt], RegisterState, VariableMap)
-stmtToLLVMStmt (SExp expr) rs0 vm0 =
-        (stmts ++ [Print value], rs1, vm1)
-  where (value, stmts, rs1, vm1) = expToLLVM expr rs0 vm0
+stmtToLLVMStmt :: Stmt -> RegisterState -> VariableMap -> CompilerErrorM ([LLVMStmt], RegisterState, VariableMap)
+stmtToLLVMStmt (SExp expr) rs0 vm0 = do
+  (value, stmts, rs1, vm1) <- expToLLVM expr rs0 vm0
+  return (stmts ++ [Print value], rs1, vm1)
+
 -- TODO: write to register?
-stmtToLLVMStmt (SAss (Ident ident) expr) rs0 vm0 = (stmts, rs1, setVariable ident value vm1)
-  where (value, stmts, rs1, vm1) = expToLLVM expr rs0 vm0
+stmtToLLVMStmt (SAss (Ident ident) expr) rs0 vm0 = do
+  (value, stmts, rs1, vm1) <- expToLLVM expr rs0 vm0
+  return (stmts, rs1, setVariable ident value vm1)
 
 -- TODO: remove VariableMap as return value
-expToLLVM :: Exp -> RegisterState -> VariableMap -> (Value, [LLVMStmt], RegisterState, VariableMap)
+expToLLVM :: Exp -> RegisterState -> VariableMap -> CompilerErrorM (Value, [LLVMStmt], RegisterState, VariableMap)
 expToLLVM (ExpAdd e1 e2) rs0 vm0 = arithmHelper OAdd e1 e2 rs0 vm0
 expToLLVM (ExpMul e1 e2) rs0 vm0 = arithmHelper OMul e1 e2 rs0 vm0
 expToLLVM (ExpSub e1 e2) rs0 vm0 = arithmHelper OSub e1 e2 rs0 vm0
 expToLLVM (ExpDiv e1 e2) rs0 vm0 = arithmHelper ODiv e1 e2 rs0 vm0
-expToLLVM (ExpLit num) registerState vm = (VConst num, [], registerState, vm)
-expToLLVM (ExpVar (Ident ident)) registerState vm = (lookupVariable ident vm, [], registerState, vm)
+expToLLVM (ExpLit num) registerState vm = return (VConst num, [], registerState, vm)
+expToLLVM (ExpVar (Ident ident)) registerState vm
+  = do var <- lookupVariable ident vm
+       return (var, [], registerState, vm)
 
-arithmHelper operator e1 e2 rs0 vm0 = (
-      VRegister register, s1 ++ s2 ++ [LSArithm v1 v2 operator register], newRegisterState, vm2)
-  where (v1, s1, rs1, vm1) = expToLLVM e1 rs0 vm0
-        (v2, s2, rs2, vm2) = expToLLVM e2 rs1 vm1
-        (register, newRegisterState) = newRegister rs2
+arithmHelper operator e1 e2 rs0 vm0 = do
+  (v1, s1, rs1, vm1) <- expToLLVM e1 rs0 vm0
+  (v2, s2, rs2, vm2) <- expToLLVM e2 rs1 vm1
+  let (register, newRegisterState) = newRegister rs2
+  return ( VRegister register
+         , s1 ++ s2 ++ [LSArithm v1 v2 operator register]
+         , newRegisterState
+         , vm2 )
 
 stringify :: LLVMProgram -> String
 stringify (LLVMProgram stmts) = unlines (progHead ++ progMain ++ progTail)
@@ -82,4 +99,6 @@ stringify (LLVMProgram stmts) = unlines (progHead ++ progMain ++ progTail)
     stringifyOp OSub = "sub"
     stringifyOp ODiv = "sdiv"
 
-compileLLVM = stringify . treeToLLVMProg
+compileLLVM tree = do
+  prog <- treeToLLVMProg tree
+  return $ stringify prog
