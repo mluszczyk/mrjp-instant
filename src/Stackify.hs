@@ -43,19 +43,19 @@ stmtToLLVMStmt (SAss (Ident ident) expr) locals0 = (stmts ++ [Store local], loca
 
 -- TODO: remove VariableMap as return value
 expToLLVM :: Exp -> Locals -> [JVMStmt]
--- expToLLVM (ExpAdd e1 e2) rs0 vm0 = arithmHelper OAdd e1 e2 rs0 vm0
--- expToLLVM (ExpMul e1 e2) rs0 vm0 = arithmHelper OMul e1 e2 rs0 vm0
--- expToLLVM (ExpSub e1 e2) rs0 vm0 = arithmHelper OSub e1 e2 rs0 vm0
--- expToLLVM (ExpDiv e1 e2) rs0 vm0 = arithmHelper ODiv e1 e2 rs0 vm0
+expToLLVM (ExpAdd e1 e2) locals = arithmHelper OAdd e1 e2 locals
+expToLLVM (ExpMul e1 e2) locals = arithmHelper OMul e1 e2 locals
+expToLLVM (ExpSub e1 e2) locals = arithmHelper OSub e1 e2 locals
+expToLLVM (ExpDiv e1 e2) locals = arithmHelper ODiv e1 e2 locals
 expToLLVM (ExpLit num) _ = [Const num]
 expToLLVM (ExpVar (Ident ident)) locals = [Load local]
   where local = lookupLocalForRead ident locals
 
--- arithmHelper operator e1 e2 rs0 vm0 = (
---       VRegister register, s1 ++ s2 ++ [LSArithm v1 v2 operator register], newRegisterState, vm2)
---   where (v1, s1, rs1, vm1) = expToLLVM e1 rs0 vm0
---         (v2, s2, rs2, vm2) = expToLLVM e2 rs1 vm1
---         (register, newRegisterState) = newRegister rs2
+arithmHelper :: Operator -> Exp -> Exp -> Locals -> [JVMStmt]
+arithmHelper operator e1 e2 locals =
+      s1 ++ s2 ++ [Arithm operator]
+  where s1 = expToLLVM e1 locals
+        s2 = expToLLVM e2 locals
 
 stringify :: JVMProgram -> String
 stringify JVMProgram { jvmProgStmts = stmts
@@ -88,3 +88,10 @@ stringify JVMProgram { jvmProgStmts = stmts
     stringifyStmt (Const num) = "  ldc " ++ show num
     stringifyStmt (Load (LNum localNum)) = "  iload " ++ show localNum
     stringifyStmt (Store (LNum localNum)) = "  istore " ++ show localNum
+    stringifyStmt (Arithm operator) = "  " ++ stringifyOp operator
+
+    stringifyOp OAdd = "iadd"
+    stringifyOp OMul = "imul"
+    stringifyOp OSub = "isub"
+    stringifyOp ODiv = "idiv"
+  
