@@ -12,7 +12,7 @@ data JVMProgram = JVMProgram { jvmProgStmts :: [JVMStmt]
                              , jvmProgLocalsLimit :: Integer } deriving Show
 
 data Operator = OAdd | OSub | OMul | ODiv deriving Show
-data JVMStmt = Print | Const Integer | Load Local | Store Local | Arithm Operator deriving Show
+data JVMStmt = Print | Const Integer | Load Local | Store Local | Arithm Operator | GetStaticPrint deriving Show
 
 data Locals = Locals { localsNextLocal :: Local
                      , localsIdentMap :: M.Map String Local }
@@ -38,14 +38,14 @@ treeToJVMProg (Prog stmts) = do
           return (stmts0 ++ newStmts, locals1)
   (jvmStmts, _) <- foldM go ([], initLocals) stmts
   return JVMProgram { jvmProgStmts = jvmStmts
-                    , jvmProgStackLimit = 20
-                    , jvmProgLocalsLimit = 20 }
+                    , jvmProgStackLimit = 100
+                    , jvmProgLocalsLimit = 100 }
 
 stmtToLLVMStmt :: Stmt -> Locals -> CompilerErrorM ([JVMStmt], Locals)
 stmtToLLVMStmt (SExp expr) locals =
   do
     stmts <- expToLLVM expr locals
-    return (stmts ++ [Print], locals)
+    return ([GetStaticPrint] ++ stmts ++ [Print], locals)
 
 stmtToLLVMStmt (SAss (CIdent (_, ident)) expr) locals0 =
   do
@@ -79,7 +79,7 @@ stringify JVMProgram { jvmProgStmts = stmts
   = unlines (progHead ++ progMain ++ progTail)
   where
     progHead =
-      [ ".class  public Hello"
+      [ ".class  public Instant"
       , ".super  java/lang/Object"
       , ""
       , "; standard initializer"
@@ -92,7 +92,6 @@ stringify JVMProgram { jvmProgStmts = stmts
       , ".method public static main([Ljava/lang/String;)V"
       , ".limit stack " ++ show stackLimit
       , ".limit locals " ++ show localsLimit
-      , "  getstatic  java/lang/System/out Ljava/io/PrintStream;"
       ]
     progMain = map stringifyStmt stmts
     progTail =
@@ -104,6 +103,7 @@ stringify JVMProgram { jvmProgStmts = stmts
     stringifyStmt (Load (LNum localNum)) = "  iload " ++ show localNum
     stringifyStmt (Store (LNum localNum)) = "  istore " ++ show localNum
     stringifyStmt (Arithm operator) = "  " ++ stringifyOp operator
+    stringifyStmt GetStaticPrint = "  getstatic  java/lang/System/out Ljava/io/PrintStream;"
 
     stringifyOp OAdd = "iadd"
     stringifyOp OMul = "imul"
