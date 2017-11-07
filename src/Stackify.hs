@@ -5,11 +5,11 @@ import CompilerErr (CompilerErrorM, raiseCEUndefinedVariable)
 import qualified Data.Map as M
 import Control.Monad (foldM)
 
-newtype Local = LNum Integer deriving Show
+newtype Local = LNum Int deriving Show
 
 data JVMProgram = JVMProgram { jvmProgStmts :: [JVMStmt]
-                             , jvmProgStackLimit :: Integer
-                             , jvmProgLocalsLimit :: Integer } deriving Show
+                             , jvmProgStackLimit :: Int
+                             , jvmProgLocalsLimit :: Int } deriving Show
 
 data Operator = OAdd | OSub | OMul | ODiv deriving Show
 data JVMStmt = Print | Const Integer | Load Local | Store Local | Arithm Operator | GetStaticPrint deriving Show
@@ -27,40 +27,44 @@ lookupLocalForRead :: Int -> Int -> String -> Locals -> CompilerErrorM Local
 lookupLocalForRead row col ident Locals {localsNextLocal = nextLocal, localsIdentMap = identMap}
  = maybe (raiseCEUndefinedVariable ident row col) return (M.lookup ident identMap)
 
+-- locals start with 1, we reserve 0 for main parameter being String[] args 
 initLocals :: Locals
-initLocals = Locals {localsNextLocal = LNum 0, localsIdentMap = M.empty}
+initLocals = Locals {localsNextLocal = LNum 1, localsIdentMap = M.empty}
+
+usedLocalsNum :: Locals -> Int
+usedLocalsNum Locals {localsNextLocal = LNum num, localsIdentMap = _ } = num
 
 treeToJVMProg :: Program -> CompilerErrorM JVMProgram
 treeToJVMProg (Prog stmts) = do
   let go (stmts0, locals0) item =
         do
-          (newStmts, locals1) <- stmtToLLVMStmt item locals0
+          (newStmts, locals1) <- stmtToJVMStmt item locals0
           return (stmts0 ++ newStmts, locals1)
-  (jvmStmts, _) <- foldM go ([], initLocals) stmts
+  (jvmStmts, finalLocals) <- foldM go ([], initLocals) stmts
   return JVMProgram { jvmProgStmts = jvmStmts
                     , jvmProgStackLimit = 100
-                    , jvmProgLocalsLimit = 100 }
+                    , jvmProgLocalsLimit = usedLocalsNum finalLocals }
 
-stmtToLLVMStmt :: Stmt -> Locals -> CompilerErrorM ([JVMStmt], Locals)
-stmtToLLVMStmt (SExp expr) locals =
+stmtToJVMStmt :: Stmt -> Locals -> CompilerErrorM ([JVMStmt], Locals)
+stmtToJVMStmt (SExp expr) locals =
   do
-    stmts <- expToLLVM expr locals
+    stmts <- expToJVM expr locals
     return ([GetStaticPrint] ++ stmts ++ [Print], locals)
 
-stmtToLLVMStmt (SAss (CIdent (_, ident)) expr) locals0 =
+stmtToJVMStmt (SAss (CIdent (_, ident)) expr) locals0 =
   do
-    stmts <- expToLLVM expr locals0
+    stmts <- expToJVM expr locals0
     let (local, locals1) = lookupLocalForWrite ident locals0
     return (stmts ++ [Store local], locals1)
 
 -- TODO: remove VariableMap as return value
-expToLLVM :: Exp -> Locals -> CompilerErrorM [JVMStmt]
-expToLLVM (ExpAdd e1 e2) locals = arithmHelper OAdd e1 e2 locals
-expToLLVM (ExpMul e1 e2) locals = arithmHelper OMul e1 e2 locals
-expToLLVM (ExpSub e1 e2) locals = arithmHelper OSub e1 e2 locals
-expToLLVM (ExpDiv e1 e2) locals = arithmHelper ODiv e1 e2 locals
-expToLLVM (ExpLit num) _ = return [Const num]
-expToLLVM (ExpVar (CIdent ((row, col), ident))) locals =
+expToJVM :: Exp -> Locals -> CompilerErrorM [JVMStmt]
+expToJVM (ExpAdd e1 e2) locals = arithmHelper OAdd e1 e2 locals
+expToJVM (ExpMul e1 e2) locals = arithmHelper OMul e1 e2 locals
+expToJVM (ExpSub e1 e2) locals = arithmHelper OSub e1 e2 locals
+expToJVM (ExpDiv e1 e2) locals = arithmHelper ODiv e1 e2 locals
+expToJVM (ExpLit num) _ = return [Const num]
+expToJVM (ExpVar (CIdent ((row, col), ident))) locals =
   do
     local <- lookupLocalForRead row col ident locals
     return [Load local]
@@ -68,8 +72,8 @@ expToLLVM (ExpVar (CIdent ((row, col), ident))) locals =
 arithmHelper :: Operator -> Exp -> Exp -> Locals -> CompilerErrorM [JVMStmt]
 arithmHelper operator e1 e2 locals =
   do
-    s1 <- expToLLVM e1 locals
-    s2 <- expToLLVM e2 locals
+    s1 <- expToJVM e1 locals
+    s2 <- expToJVM e2 locals
     return $ s1 ++ s2 ++ [Arithm operator]
 
 stringify :: JVMProgram -> String
