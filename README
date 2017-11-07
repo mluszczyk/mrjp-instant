@@ -26,3 +26,7 @@ bash scripts ./insc_llvm and ./insc_jvm use jasmin, clang and sed.
 
 The parsing code is generated using BNFC, but it is not necessary for
 compilation or for running.
+
+## Project structure
+
+The starting point is instant.cabal file, further pointers can be found there.
