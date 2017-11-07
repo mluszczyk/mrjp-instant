@@ -30,3 +30,15 @@ compilation or for running.
 ## Project structure
 
 The starting point is instant.cabal file, further pointers can be found there.
+
+## Optimisations
+
+As per assignment objective, only selected optimisations are performed. LLVM
+code is not optimised at all. JVM compiler optimises stack height. For binary
+operations like +, -, *, / and also printing (which consists of getstatic ...
+and then invokevirtual ...), the operand requiring deeper stack is calculated
+first, its result is stored on the stack and only then is calculated the other
+operand. If necessary (non-commutative operators), a swap statement is added.
+Moreover, different statements are used to push a constant number to the stack.
+const_* statements are used whenever possible, bipush is used for numbers
+fitting one byte and ldc for the rest.
