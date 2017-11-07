@@ -115,7 +115,7 @@ stringify JVMProgram { jvmProgStmts = stmts
       , ".end method"
       ]
     stringifyStmt Print = "  invokevirtual  java/io/PrintStream/println(I)V"
-    stringifyStmt (Const num) = "  bipush " ++ show num
+    stringifyStmt (Const num) = "  " ++ stringifyConst num
     stringifyStmt (Load (LNum localNum)) = "  iload " ++ show localNum
     stringifyStmt (Store (LNum localNum)) = "  istore " ++ show localNum
     stringifyStmt (Arithm operator) = "  " ++ stringifyOp operator
@@ -126,6 +126,12 @@ stringify JVMProgram { jvmProgStmts = stmts
     stringifyOp OMul = "imul"
     stringifyOp OSub = "isub"
     stringifyOp ODiv = "idiv"
+
+    stringifyConst num
+      | num == -1 = "iconst_m1"
+      | 0 <= num && num <= 5 = "iconst_" ++ show num
+      | -128 <= num && num <= 127 = "bipush " ++ show num
+      | otherwise = "ldc " ++ show num
 
 compileJVM tree = do
   prog <- treeToJVMProg tree
