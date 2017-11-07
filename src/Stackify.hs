@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wall -Werror #-}
+
 module Stackify where
 
 import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), CIdent (CIdent))
@@ -24,7 +26,7 @@ lookupLocalForWrite ident locals@Locals {localsNextLocal = LNum nextLocalNum, lo
                                     , localsIdentMap = M.insert ident (LNum nextLocalNum) identMap })
 
 lookupLocalForRead :: Int -> Int -> String -> Locals -> CompilerErrorM Local
-lookupLocalForRead row col ident Locals {localsNextLocal = nextLocal, localsIdentMap = identMap}
+lookupLocalForRead row col ident Locals {localsNextLocal = _, localsIdentMap = identMap}
  = maybe (raiseCEUndefinedVariable ident row col) return (M.lookup ident identMap)
 
 -- locals start with 1, we reserve 0 for main parameter being String[] args
@@ -136,6 +138,7 @@ stringify JVMProgram { jvmProgStmts = stmts
       | -128 <= num && num <= 127 = "bipush " ++ show num
       | otherwise = "ldc " ++ show num
 
+compileJVM :: Program -> CompilerErrorM String
 compileJVM tree = do
   prog <- treeToJVMProg tree
   return $ stringify prog

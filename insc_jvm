@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 INFILE="$1"
 DIR=`dirname $INFILE`
 BASENAME=`basename $INFILE .ins`

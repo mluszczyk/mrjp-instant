@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wall -Werror #-}
+
 module Flatten where
 
 import AbsInstant (Program (Prog), Stmt (SExp, SAss), Exp (ExpAdd, ExpMul, ExpSub, ExpDiv, ExpLit, ExpVar), CIdent (CIdent))
@@ -5,7 +7,10 @@ import qualified Data.Map as M
 import CompilerErr (CompilerErrorM, raiseCEUndefinedVariable)
 import Control.Monad (foldM)
 
+initRegister :: RegisterState
 initRegister = RSState 0
+
+newRegister :: RegisterState -> (Register, RegisterState)
 newRegister (RSState num) = (RRegister num, RSState $ num + 1)
 
 newtype Register = RRegister Integer deriving Show
@@ -61,6 +66,12 @@ expToLLVM (ExpVar (CIdent (pos, ident))) registerState vm
   = do var <- lookupVariable pos ident vm
        return (var, [], registerState, vm)
 
+arithmHelper :: Operator
+                 -> Exp
+                 -> Exp
+                 -> RegisterState
+                 -> VariableMap
+                 -> CompilerErrorM (Value, [LLVMStmt], RegisterState, VariableMap)
 arithmHelper operator e1 e2 rs0 vm0 = do
   (v1, s1, rs1, vm1) <- expToLLVM e1 rs0 vm0
   (v2, s2, rs2, vm2) <- expToLLVM e2 rs1 vm1
@@ -99,6 +110,7 @@ stringify (LLVMProgram stmts) = unlines (progHead ++ progMain ++ progTail)
     stringifyOp OSub = "sub"
     stringifyOp ODiv = "sdiv"
 
+compileLLVM :: Program -> CompilerErrorM String
 compileLLVM tree = do
   prog <- treeToLLVMProg tree
   return $ stringify prog

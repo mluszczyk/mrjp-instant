@@ -1,47 +1,46 @@
+{-# OPTIONS_GHC -Wall -Werror #-}
+
 module Main where
 
-
-import System.IO ( stdin, hGetContents, hPutStrLn, hPutStr, stderr, hPrint )
-import System.Environment ( getArgs, getProgName )
+import System.IO ( hPutStrLn, stderr, hPrint )
+import System.Environment ( getArgs )
 import System.Exit ( exitFailure, exitSuccess )
 
 import LexInstant
 import ParInstant
-import SkelInstant
-import PrintInstant
 import AbsInstant
 
 import Flatten (compileLLVM)
 import Stackify (compileJVM)
-import CompilerErr (errorToString)
+import CompilerErr (errorToString, CompilerErrorM)
 
 import ErrM
 
 type ParseFun a = [Token] -> Err a
 
-myLLexer = myLexer
-
+getCompiler :: String -> IO (Program -> CompilerErrorM String)
 getCompiler mode
-  | mode == "llvm" = compileLLVM
-  | mode == "jvm" = compileJVM
+  | mode == "llvm" = return compileLLVM
+  | mode == "jvm" = return compileJVM
+  | otherwise = do hPutStrLn stderr "wrong mode, should be llvm or jvm"
+                   exitFailure
 
 run :: String -> ParseFun Program -> String -> IO ()
-run mode p s = let ts = myLLexer s in case p ts of
-          Bad s    -> do hPutStrLn stderr "\nParse              Failed...\n"
-                         hPutStrLn stderr "Tokens:"
-                         hPrint stderr ts
-                         hPutStrLn stderr s
-                         exitFailure
-          Ok  tree ->  either (\ce ->
-                           do
-                            hPutStrLn stderr (errorToString ce)
-                            exitFailure)
-                          (\ output ->
-                           do
-                            putStr output
-                            exitSuccess)
-                          (getCompiler mode tree)
-
+run mode p s =
+  do compiler <- getCompiler mode
+     let ts = myLexer s in case p ts of
+          Bad descr ->  do hPutStrLn stderr "\nParse              Failed...\n"
+                           hPutStrLn stderr "Tokens:"
+                           hPrint stderr ts
+                           hPutStrLn stderr descr
+                           exitFailure
+          Ok  tree ->  case compiler tree of
+            Left ce      -> do
+                              hPutStrLn stderr (errorToString ce)
+                              exitFailure
+            Right output -> do
+                              putStr output
+                              exitSuccess
 
 usage :: IO ()
 usage = do
