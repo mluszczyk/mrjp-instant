@@ -35,23 +35,9 @@ executable test-instant
   build-depends:       base >= 4.7 && < 5
                      , instant
 
-executable interpret
+executable compile
   hs-source-dirs:      app
-  main-is:             Interpret.hs
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
-                      , instant
-
-executable generate-llvm
-  hs-source-dirs:      app
-  main-is:             GenLLVM.hs
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
-                     , instant
-
-executable generate-jvm
-  hs-source-dirs:      app
-  main-is:             GenJVM.hs
+  main-is:             Compile.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , instant

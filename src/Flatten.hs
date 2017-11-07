@@ -81,3 +81,5 @@ stringify (LLVMProgram stmts) = unlines (progHead ++ progMain ++ progTail)
     stringifyOp OMul = "mul"
     stringifyOp OSub = "sub"
     stringifyOp ODiv = "sdiv"
+
+compileLLVM = stringify . treeToLLVMProg

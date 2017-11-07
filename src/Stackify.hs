@@ -94,4 +94,5 @@ stringify JVMProgram { jvmProgStmts = stmts
     stringifyOp OMul = "imul"
     stringifyOp OSub = "isub"
     stringifyOp ODiv = "idiv"
-  
+
+compileJVM = stringify . treeToJVMProg
